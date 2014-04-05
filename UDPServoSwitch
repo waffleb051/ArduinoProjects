@@ -1,0 +1,101 @@
+/*
+Light on and off via UDP with an override
+
+Created by Brian Busk
+
+This program will allow a user to turn a light switch on and off using UDP.
+It also has a button to allow for manually turning the light on and off. It is geared towards a dorm room/apartment
+
+*/
+
+#include <Servo.h> 
+#include <SPI.h>        
+#include <Ethernet.h>
+#include <EthernetUdp.h> 
+
+//Change this to a uniqe address
+byte mac[] = {  
+  0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
+
+unsigned int localPort = 8888;
+
+//creating a servo object  
+Servo servo1;
+
+char pb[UDP_TX_PACKET_MAX_SIZE];
+char  ack[] = "GOT IT";
+
+//The psosition of the servo will need to be changed depending on 
+//where the starting position is
+int pos = 0;
+
+EthernetUDP Udp;
+
+void setup() 
+{ 
+  // start the Ethernet and UDP:
+  Ethernet.begin(mac);
+  Udp.begin(localPort);
+  //location of the servo
+  servo1.attach(9); 
+  Serial.begin(9600);
+  if (Ethernet.begin(mac) == 0) {
+    Serial.println("Failed to configure Ethernet using DHCP");
+    // no point in carrying on, so do nothing forevermore:
+    for(;;)
+      ;
+  }
+  // print your local IP address:
+  Serial.println(Ethernet.localIP());
+}//end setup
+
+void loop() {
+  // if there's data available, read a packet
+  int packetSize = Udp.parsePacket();
+  String on = "ON";
+  String off = "OFF";
+  boolean STATE;
+  
+  Serial.println(STATE);
+  
+  
+  if(packetSize)
+  {
+    Serial.print("Received ");
+    Serial.println(packetSize);
+    Serial.print("From ");
+    IPAddress remote = Udp.remoteIP();
+    for (int i =0; i < 4; i++)
+    {
+      Serial.print(remote[i], DEC);
+      if (i < 3)
+      {
+        Serial.print(".");
+      }
+    }
+    Serial.print(", port ");
+    Serial.println(Udp.remotePort());
+
+    // read the packet into packetBufffer
+    Udp.read(pb,UDP_TX_PACKET_MAX_SIZE);
+    Serial.println("Contents:");
+    Serial.println(pb);
+
+    // send a reply, to the IP address and port that sent us the packet we received
+    Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
+    Udp.write(ack);
+    Udp.endPacket();
+    
+  if(pb == "ON"){
+   pos = 90;
+  STATE = true; 
+  }
+  else if(pb == "OFF"){
+   pos = 0;
+  STATE = false; 
+  }
+    
+  }
+  
+  delay(10);
+}
